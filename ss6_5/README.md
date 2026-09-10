@@ -282,3 +282,35 @@ Nếu yêu cầu nghiêm ngặt là deadline 250ms, timeout 3 giây chỉ là gi
 API Aggregator là lựa chọn phù hợp cho Dashboard VietMart vì bốn dữ liệu không phụ thuộc lẫn nhau. Với `CompletableFuture.supplyAsync()` và executor riêng, bốn lời gọi được khởi chạy song song; thời gian phản hồi lý tưởng giảm từ khoảng 800ms xuống khoảng 200ms, gần với mục tiêu 250ms. `CompletableFuture.allOf(...).get(3, TimeUnit.SECONDS)` đảm bảo có timeout tổng, còn `exceptionally()` giúp dashboard vẫn hiển thị khi một dependency gặp sự cố.
 
 Để đưa vào production, cần đo latency thực tế, cấu hình timeout HTTP nhỏ hơn SLA, giới hạn thread/connection pool, thêm tracing và thể hiện rõ cho frontend khi response chỉ chứa dữ liệu một phần.
+
+## 7. Mã nguồn trong repository
+
+Project đã có mã nguồn Spring Boot tương ứng với thiết kế trên:
+
+```text
+src/main/java/com/vietmart/dashboard/
+├── DashboardApplication.java
+├── client/
+│   ├── OrderClient.java
+│   ├── ProductClient.java
+│   └── UserClient.java
+├── config/DashboardAsyncConfig.java
+├── controller/DashboardController.java
+├── dto/DashboardResponse.java
+└── service/DashboardService.java
+```
+
+Chạy project bằng Maven:
+
+```bash
+mvn spring-boot:run
+```
+
+Endpoint aggregator là `GET /api/admin/dashboard`. Các Feign client đang gọi lần lượt
+`order-service`, `product-service` và `user-service`, vì vậy cần service discovery/configuration
+hoặc mock server tương ứng trước khi gọi endpoint. `application.yml` đặt HTTP timeout của Feign
+ở mức 100ms connect và 200ms read để phù hợp với mục tiêu latency minh họa.
+
+Kết quả 800ms và 200ms trong tài liệu là phép tính lý thuyết với bốn dependency có độ trễ 200ms.
+Muốn ghi nhận số đo thực tế cần chạy các downstream service/mock có độ trễ kiểm soát, gọi endpoint
+nhiều lần và báo cáo cả average, p95/p99 cùng trạng thái lỗi hoặc timeout.

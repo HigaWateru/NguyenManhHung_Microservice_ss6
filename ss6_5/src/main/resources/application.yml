@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: dashboard-aggregator
+
+server:
+  port: 8080
+
+spring.cloud.openfeign:
+  client:
+    config:
+      default:
+        connectTimeout: 100
+        readTimeout: 200
